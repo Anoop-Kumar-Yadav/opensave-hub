@@ -29,7 +29,10 @@ const HUB_KEY = "opensave-hub-v1";
 
 const DEFAULT_GITHUB_REPO = "Anoop-Kumar-Yadav/opensave-hub";
 
+const STORE_RESET_STAMP = "reset-keep-dsa-sheet-v1";
+
 const DEFAULT_HUB = () => ({
+  resetStamp: STORE_RESET_STAMP,
   settings: {
     autoUpdate: true,
     launchMode: "embedded",
@@ -53,12 +56,31 @@ try {
   const raw = localStorage.getItem(HUB_KEY);
   if (raw) {
     const parsed = JSON.parse(raw);
-    if (parsed.settings) Object.assign(hub.settings, parsed.settings);
-    if (parsed.installed) hub.installed = parsed.installed;
-    if (Array.isArray(parsed.customApps)) hub.customApps = parsed.customApps;
-    if (parsed.lastCloudSync) hub.lastCloudSync = parsed.lastCloudSync;
-    if (parsed.adminOverrides && typeof parsed.adminOverrides === "object") hub.adminOverrides = parsed.adminOverrides;
-    if (!hub.settings.githubRepo) hub.settings.githubRepo = DEFAULT_GITHUB_REPO;
+    if (parsed.resetStamp === STORE_RESET_STAMP) {
+      if (parsed.settings) Object.assign(hub.settings, parsed.settings);
+      if (parsed.installed && parsed.installed["dsa-sheet"]) {
+        hub.installed = { "dsa-sheet": parsed.installed["dsa-sheet"] };
+      }
+      if (Array.isArray(parsed.customApps)) hub.customApps = parsed.customApps;
+      if (parsed.lastCloudSync) hub.lastCloudSync = parsed.lastCloudSync;
+      if (parsed.adminOverrides && typeof parsed.adminOverrides === "object") hub.adminOverrides = parsed.adminOverrides;
+      if (!hub.settings.githubRepo) hub.settings.githubRepo = DEFAULT_GITHUB_REPO;
+    } else {
+      // One-time store reset preserving DSA.sheet only
+      if (parsed.settings) {
+        Object.assign(hub.settings, {
+          autoUpdate: parsed.settings.autoUpdate ?? true,
+          launchMode: parsed.settings.launchMode ?? "embedded",
+          theme: parsed.settings.theme ?? null,
+          publishEndpoint: parsed.settings.publishEndpoint ?? "/api/v1/apps/publish",
+          githubRepo: parsed.settings.githubRepo || DEFAULT_GITHUB_REPO,
+        });
+      }
+      if (parsed.installed?.["dsa-sheet"]) {
+        hub.installed = { "dsa-sheet": parsed.installed["dsa-sheet"] };
+      }
+      localStorage.setItem(HUB_KEY, JSON.stringify(hub));
+    }
   }
 } catch {
   // Ignore corrupted storage
