@@ -502,6 +502,7 @@ function renderNavigation() {
     ).join("") +
     `
       <div class="pt-3 mt-3 border-t border-hairline-subtle space-y-1">
+        ${state.auth.isAdmin ? `
         <button
           type="button"
           data-open-add-app
@@ -509,7 +510,7 @@ function renderNavigation() {
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>
           <span>Add .ZIP App</span>
-        </button>
+        </button>` : ""}
         <button
           type="button"
           data-tab="${DOCS_TAB.id}"
@@ -561,6 +562,7 @@ function renderPageHeader(title, eyebrow = "") {
             Install Hub
           </button>
         ` : ""}
+        ${state.auth.isAdmin ? `
         <button
           type="button"
           data-open-add-app
@@ -569,7 +571,7 @@ function renderPageHeader(title, eyebrow = "") {
           title="Add .ZIP Mini-App"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>
-        </button>
+        </button>` : ""}
         <button
           type="button"
           data-tab="docs"
@@ -815,9 +817,10 @@ function renderInstalledView() {
               Auto-update is ${hub.settings.autoUpdate ? "ON" : "OFF"}. Add your own <code>.zip</code> mini-apps with <strong>+</strong> — they stay installed permanently and can be published to the OpenSave server anytime.
             </p>
             <div class="mt-5 flex flex-wrap items-center gap-3">
+              ${state.auth.isAdmin ? `
               <button type="button" data-open-add-app class="px-5 py-2.5 rounded-full bg-white text-[#1d1d1f] hover:bg-white/90 font-bold text-xs transition">
                 + Add .ZIP App
-              </button>
+              </button>` : ""}
               <button type="button" data-open-account class="get-btn get-btn-glass px-5 py-2.5 rounded-full text-xs">
                 Storage &amp; Updates
               </button>
@@ -1178,6 +1181,10 @@ async function handleZipSelection(file) {
 }
 
 function openAddAppModal() {
+  if (!state.auth.isAdmin) {
+    showToast("Adding .ZIP apps is restricted to admins");
+    return;
+  }
   state.addAppModalOpen = true;
   state.zipDraft = null;
   state.zipError = null;
