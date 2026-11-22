@@ -24,9 +24,9 @@
         "Markdown Export"
       ],
       "changelog": [
-        "v1.8.0 — Topic tiles grid with dedicated Topic pages & question tiles",
-        "v1.7.0 — Configurable Top/Left/Right navigation & mouse-wheel scroll",
-        "v1.5.0 — Dynamic Pure Algorithms Vault with nested sections"
+        "v1.8.0 \u2014 Topic tiles grid with dedicated Topic pages & question tiles",
+        "v1.7.0 \u2014 Configurable Top/Left/Right navigation & mouse-wheel scroll",
+        "v1.5.0 \u2014 Dynamic Pure Algorithms Vault with nested sections"
       ],
       "assets": [
         "./apps/dsa-sheet/index.html",
@@ -88,7 +88,7 @@
         "Visualizer"
       ],
       "changelog": [
-        "v1.0.0 — Modular interactive canvas with Array, Stack, Queue, Linked List, BST, Heap, HashMap & Graph"
+        "v1.0.0 \u2014 Modular interactive canvas with Array, Stack, Queue, Linked List, BST, Heap, HashMap & Graph"
       ],
       "assets": [
         "./apps/dsa-board/index.html",
@@ -156,7 +156,7 @@
         "Offline"
       ],
       "changelog": [
-        "v1.0.0 — Initial release with live validation, tree stats, and minify/prettify"
+        "v1.0.0 \u2014 Initial release with live validation, tree stats, and minify/prettify"
       ],
       "assets": [
         "./apps/json-studio/index.html"
@@ -243,38 +243,6 @@
         "level": "Data Not Collected",
         "detail": "Study blocks and focus logs remain strictly on your device."
       }
-    },
-    {
-      "id": "jwt-decoder",
-      "name": "JWT Decoder",
-      "tagline": "Offline JWT inspector, claim parser, and HS256/384/512 signature verifier.",
-      "description": "Decode JSON Web Tokens 100% locally in your browser without pasting sensitive auth tokens into third-party websites. Inspect Header and Payload JSON, check expiration timestamps (exp/iat/nbf), and verify HMAC signatures using the native Web Crypto API.",
-      "category": "Dev Tools",
-      "section": "tools",
-      "version": "1.0.0",
-      "developer": "OpenSave",
-      "sizeLabel": "~18 KB",
-      "status": "available",
-      "supportsOffline": true,
-      "url": "./apps/jwt-decoder/index.html",
-      "accent": "#0a84ff",
-      "iconBg": "linear-gradient(145deg, #0a84ff 0%, #5856d6 100%)",
-      "tags": [
-        "JWT",
-        "Auth",
-        "Security",
-        "API",
-        "Offline"
-      ],
-      "changelog": [
-        "v1.0.0 — Initial offline release with UTF-8 Base64URL decoding, claim timestamps, and Web Crypto HMAC verification"
-      ],
-      "assets": [
-        "./apps/jwt-decoder/index.html",
-        "./apps/jwt-decoder/opensave.json",
-        "./apps/jwt-decoder/src/main.js",
-        "./apps/jwt-decoder/styles/app.css"
-      ]
     }
   ]
 }

@@ -1,12 +1,13 @@
 /**
- * OpenSave Admin Dashboard — Manage uploaded user apps, GitHub submissions queue,
- * and app lifecycle states (pending, in_review, available, coming_soon, rejected, archived).
+ * OpenSave Admin Dashboard — Review user-uploaded .ZIP apps, manage lifecycle states,
+ * and submit approved apps to the store/GitHub.
  */
 
 export const APP_STATES = [
-  { id: "available", label: "Live (Published)", badgeClass: "admin-badge-live" },
   { id: "pending", label: "Pending Review", badgeClass: "admin-badge-pending" },
   { id: "in_review", label: "In Review", badgeClass: "admin-badge-review" },
+  { id: "approved_ready", label: "Approved (Ready to Submit)", badgeClass: "admin-badge-approved" },
+  { id: "available", label: "Live (Published)", badgeClass: "admin-badge-live" },
   { id: "coming_soon", label: "Coming Soon", badgeClass: "admin-badge-soon" },
   { id: "rejected", label: "Rejected", badgeClass: "admin-badge-rejected" },
   { id: "archived", label: "Archived", badgeClass: "admin-badge-archived" },
@@ -37,9 +38,9 @@ export function renderAdminView({
 }) {
   const counts = {
     all: apps.length,
+    review_queue: apps.filter((a) => a.status === "pending" || a.status === "in_review").length,
+    approved_ready: apps.filter((a) => a.status === "approved_ready").length,
     available: apps.filter((a) => a.status === "available").length,
-    pending: apps.filter((a) => a.status === "pending" || a.status === "in_review").length,
-    coming_soon: apps.filter((a) => a.status === "coming_soon").length,
     rejected: apps.filter((a) => a.status === "rejected" || a.status === "archived").length,
   };
 
@@ -62,9 +63,9 @@ export function renderAdminView({
 
   const filterPills = [
     ["all", `All (${counts.all})`],
-    ["review_queue", `Review Queue (${counts.pending})`],
+    ["review_queue", `Pending Review (${counts.review_queue})`],
+    ["approved_ready", `Approved / Ready (${counts.approved_ready})`],
     ["available", `Live (${counts.available})`],
-    ["coming_soon", `Coming Soon (${counts.coming_soon})`],
     ["rejected", "Rejected"],
     ["archived", "Archived"],
   ];
@@ -80,16 +81,16 @@ export function renderAdminView({
           <p class="text-2xl font-extrabold text-main mt-1">${counts.all}</p>
         </div>
         <div class="surface-elevated rounded-2xl border border-hairline-subtle p-4 shadow-sm">
-          <p class="text-[11px] font-bold uppercase tracking-wider text-sub">Live in Store</p>
-          <p class="text-2xl font-extrabold text-[#34c759] mt-1">${counts.available}</p>
+          <p class="text-[11px] font-bold uppercase tracking-wider text-sub">Pending Review</p>
+          <p class="text-2xl font-extrabold accent-text mt-1">${counts.review_queue}</p>
         </div>
         <div class="surface-elevated rounded-2xl border border-hairline-subtle p-4 shadow-sm">
-          <p class="text-[11px] font-bold uppercase tracking-wider text-sub">Pending / Review</p>
-          <p class="text-2xl font-extrabold accent-text mt-1">${counts.pending}</p>
+          <p class="text-[11px] font-bold uppercase tracking-wider text-sub">Approved (To Submit)</p>
+          <p class="text-2xl font-extrabold text-[#0a84ff] mt-1">${counts.approved_ready}</p>
         </div>
         <div class="surface-elevated rounded-2xl border border-hairline-subtle p-4 shadow-sm">
-          <p class="text-[11px] font-bold uppercase tracking-wider text-sub">Rejected / Archived</p>
-          <p class="text-2xl font-extrabold text-[#ff3b30] mt-1">${counts.rejected}</p>
+          <p class="text-[11px] font-bold uppercase tracking-wider text-sub">Live / Rejected</p>
+          <p class="text-2xl font-extrabold text-main mt-1">${counts.available} <span class="text-sm font-semibold text-[#ff3b30]">/ ${counts.rejected}</span></p>
         </div>
       </section>
 
@@ -97,8 +98,8 @@ export function renderAdminView({
       <section class="surface-elevated rounded-[24px] border border-hairline-subtle p-5 shadow-sm mb-6 space-y-4">
         <div class="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <h2 class="text-base font-bold text-main">Store Catalog &amp; Lifecycle Controls</h2>
-            <p class="text-xs text-sub">Approve, reject, feature, or archive apps. Export updated <code>registry/catalog.json</code> when ready to deploy.</p>
+            <h2 class="text-base font-bold text-main">Upload Review &amp; Submission Pipeline</h2>
+            <p class="text-xs text-sub">User .ZIP uploads arrive in <strong>Pending Review</strong>. Test and <strong>Approve</strong> first, then <strong>Submit</strong> to push live.</p>
           </div>
           <div class="flex flex-wrap gap-2">
             <button type="button" data-open-add-app class="get-btn px-3.5 py-1.5 rounded-full text-xs">+ Upload .ZIP</button>
@@ -111,7 +112,7 @@ export function renderAdminView({
         <div class="pt-4 border-t border-hairline-subtle">
           <div class="flex items-center justify-between gap-3 flex-wrap mb-3">
             <div>
-              <h3 class="text-xs font-bold uppercase tracking-wider text-sub">GitHub Submissions Queue (<code>submissions/</code>)</h3>
+              <h3 class="text-xs font-bold uppercase tracking-wider text-sub">GitHub Submissions Folder (<code>submissions/</code>)</h3>
               <p class="text-[11px] text-sub">Repo: <code>${esc(githubRepo || "Not configured")}</code></p>
             </div>
             <div class="flex gap-2">
@@ -168,7 +169,7 @@ export function renderAdminView({
         />
       </div>
 
-      <!-- Apps Management List -->
+      <!-- Apps Review & Approval List -->
       <section class="surface-elevated rounded-[24px] border border-hairline-subtle p-4 sm:p-5 shadow-sm">
         ${filtered.length === 0 ? `
           <p class="py-10 text-center text-sm text-sub">No apps match this filter.</p>
@@ -176,6 +177,8 @@ export function renderAdminView({
           <div class="divide-y divide-[var(--hairline-subtle)]">
             ${filtered.map((app) => {
               const stMeta = getStateMeta(app.status);
+              const isApproved = app.status === "approved_ready";
+              const isLive = app.status === "available";
               return `
                 <div class="admin-app-row py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                   <div class="flex items-start gap-3.5 min-w-0 flex-1">
@@ -185,9 +188,10 @@ export function renderAdminView({
                         <h3 class="text-[15px] font-bold text-main truncate">${esc(app.name)}</h3>
                         <span class="admin-badge ${stMeta.badgeClass}">${stMeta.label}</span>
                         ${app.isCustom ? `<span class="admin-badge admin-badge-custom">User Upload</span>` : ""}
+                        ${app.submittedAt ? `<span class="admin-badge admin-badge-live">Submitted</span>` : ""}
                         ${app.featured ? `<span class="admin-badge admin-badge-featured">Featured</span>` : ""}
                       </div>
-                      <p class="text-xs text-sub mt-0.5 truncate">${esc(app.id)} · v${esc(app.version)} · ${esc(app.category)} · by ${esc(app.developer || "OpenSave")}</p>
+                      <p class="text-xs text-sub mt-0.5 truncate">${esc(app.id)} · v${esc(app.version)} · ${esc(app.category)} · by ${esc(app.developer || "User")}</p>
                       ${app.reviewNote ? `<p class="text-[11px] text-[#ff3b30] mt-1">Review note: ${esc(app.reviewNote)}</p>` : ""}
                     </div>
                   </div>
@@ -203,8 +207,12 @@ export function renderAdminView({
 
                     ${app.url ? `<button type="button" data-admin-preview="${esc(app.id)}" class="get-btn px-3 py-1.5 rounded-full text-xs">Test</button>` : ""}
 
-                    ${app.status !== "available" ? `
+                    ${!isApproved && !isLive ? `
                       <button type="button" data-admin-approve="${esc(app.id)}" class="get-btn get-btn-solid px-3 py-1.5 rounded-full text-xs">Approve</button>
+                    ` : ""}
+
+                    ${isApproved ? `
+                      <button type="button" data-admin-submit-approved="${esc(app.id)}" class="get-btn get-btn-solid px-3.5 py-1.5 rounded-full text-xs">Submit App</button>
                     ` : ""}
 
                     ${app.status !== "rejected" ? `

@@ -819,7 +819,7 @@ function renderInstalledView() {
                   <div class="h-32 relative p-5 flex flex-col justify-between text-white" style="background: ${app.iconBg};">
                     <div class="flex items-center justify-between gap-2">
                       <span class="text-[10px] font-bold uppercase tracking-[0.12em] bg-black/25 backdrop-blur-md px-2.5 py-1 rounded-full">v${hub.installed[app.id].installedVersion} · ${app.isCustom ? "SIDELOADED" : "OFFLINE"}</span>
-                      ${app.isCustom ? `<button type="button" data-open-publish="${app.id}" class="get-btn get-btn-glass px-3 py-1 rounded-full text-[11px]">Publish</button>` : ""}
+                      ${app.isCustom && (app.status === "approved_ready" || app.status === "available") ? `<button type="button" data-open-publish="${app.id}" class="get-btn get-btn-glass px-3 py-1 rounded-full text-[11px]">Submit</button>` : (app.isCustom ? `<span class="text-[10px] font-bold uppercase tracking-wider bg-black/30 px-2.5 py-1 rounded-full">${app.status === "rejected" ? "REJECTED" : "PENDING REVIEW"}</span>` : "")}
                     </div>
                     <div>
                       <h4 class="text-xl font-extrabold tracking-tight">${app.name}</h4>
@@ -935,7 +935,7 @@ function renderProductModalBody() {
         <div class="mt-3.5 flex items-center justify-between gap-3 flex-wrap">
           <div class="flex items-center gap-2.5">
             ${renderActionButton(app, "solid")}
-            ${app.isCustom ? `<button type="button" data-open-publish="${app.id}" class="get-btn px-4 py-1.5 rounded-full text-[13px] leading-none">Publish</button>` : ""}
+            ${app.isCustom && (app.status === "approved_ready" || app.status === "available") ? `<button type="button" data-open-publish="${app.id}" class="get-btn px-4 py-1.5 rounded-full text-[13px] leading-none">Submit App</button>` : ""}
           </div>
           ${installed ? `<button type="button" data-uninstall-app="${app.id}" class="text-xs font-semibold text-[#ff3b30] hover:underline px-2 py-1">Remove</button>` : ""}
         </div>
@@ -1231,6 +1231,10 @@ function renderPublishModalBody() {
 function openPublishModal(appId) {
   const app = getAppById(appId);
   if (!app) return;
+  if (app.status !== "approved_ready" && app.status !== "available") {
+    showToast("Approve this app in Admin Dashboard before submitting");
+    return;
+  }
   if (state.activeProductId) closeProductModal();
   state.publishAppId = appId;
   state.publishBusy = false;
@@ -1536,6 +1540,8 @@ function toggleAdminFeatured(appId) {
 function buildExportableCatalog() {
   const all = getAllApps().map((a) => {
     const clean = { ...a };
+    delete clean.submittedAt;
+    delete clean.reviewNote;
     if (clean.isCustom) {
       clean.url = `./apps/${clean.id}/index.html`;
       clean.assets = (clean.assets || []).map((p) => p.replace(`./sideload/${clean.id}/`, `./apps/${clean.id}/`));
@@ -1621,8 +1627,23 @@ document.getElementById("mainContent").addEventListener("click", async (e) => {
   const adminApproveBtn = e.target.closest("[data-admin-approve]");
   if (adminApproveBtn) {
     const id = adminApproveBtn.dataset.adminApprove;
-    setAdminAppState(id, "available");
-    showToast(`Approved "${id}" — now Live in store`);
+    setAdminAppState(id, "approved_ready");
+    showToast(`Approved "${id}" — ready to submit`);
+    return;
+  }
+  const adminSubmitBtn = e.target.closest("[data-admin-submit-approved]");
+  if (adminSubmitBtn) {
+    const id = adminSubmitBtn.dataset.adminSubmitApproved;
+    hub.adminOverrides = hub.adminOverrides || {};
+    hub.adminOverrides[id] = { ...(hub.adminOverrides[id] || {}), status: "available", submittedAt: Date.now() };
+    const custom = (hub.customApps || []).find((c) => c.id === id);
+    if (custom) {
+      custom.status = "available";
+      custom.submittedAt = Date.now();
+    }
+    saveHub();
+    refreshVisibleUI();
+    openPublishModal(id);
     return;
   }
   const adminRejectBtn = e.target.closest("[data-admin-reject]");
@@ -1858,6 +1879,7 @@ addAppBody.addEventListener("submit", async (e) => {
       section: document.getElementById("slSection").value,
       version: document.getElementById("slVersion").value.trim() || "1.0.0",
       developer: document.getElementById("slDeveloper").value.trim() || "Local Developer",
+      status: "pending",
     };
 
     const appRecord = await saveSideloadedApp({
@@ -1879,7 +1901,7 @@ addAppBody.addEventListener("submit", async (e) => {
     closeAddAppModal();
     refreshStorageInfo();
     switchTab("installed");
-    showToast(`${appRecord.name} installed permanently!`);
+    showToast(`${appRecord.name} installed locally & queued for Admin review`);
   } catch (err) {
     state.zipError = err.message || "Install failed.";
     renderAddAppModalBody();

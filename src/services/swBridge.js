@@ -1,43 +1,30 @@
-export async function registerServiceWorker() {
-  if (!("serviceWorker" in navigator)) return null;
-  try {
-    return await navigator.serviceWorker.register("./sw.js", { scope: "./" });
-  } catch (err) {
-    console.warn("SW registration skipped:", err);
-    return null;
-  }
+export function registerServiceWorker() {
+  if (!("serviceWorker" in navigator)) return Promise.resolve(null);
+  return navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(() => null);
 }
 
-function sendSwMessage(payload) {
-  return new Promise((resolve) => {
-    const controller = navigator.serviceWorker?.controller;
-    if (!controller) {
-      resolve({ ok: true, offlineSkipped: true });
-      return;
-    }
-    const ch = new MessageChannel();
-    const timer = setTimeout(() => resolve({ ok: true, timeout: true }), 4000);
-    ch.port1.onmessage = (e) => {
-      clearTimeout(timer);
-      resolve(e.data || { ok: true });
-    };
-    controller.postMessage(payload, [ch.port2]);
-  });
+function sendSwMessage(msg) {
+  if (!("serviceWorker" in navigator)) return Promise.resolve({ ok: false });
+  return navigator.serviceWorker.ready.then((reg) => {
+    const target = reg.active || navigator.serviceWorker.controller;
+    if (!target) return { ok: false };
+    return new Promise((resolve) => {
+      const ch = new MessageChannel();
+      ch.port1.onmessage = (e) => resolve(e.data || { ok: true });
+      target.postMessage(msg, [ch.port2]);
+    });
+  }).catch(() => ({ ok: false }));
 }
 
-export async function precacheApp(app) {
-  if (!app.assets || !app.assets.length) return { ok: true };
+export function precacheApp(app) {
   return sendSwMessage({
     type: "PRECACHE_APP",
     appId: app.id,
     version: app.version,
-    assets: app.assets,
+    assets: app.assets || (app.url ? [app.url] : []),
   });
 }
 
-export async function purgeAppCache(appId) {
-  return sendSwMessage({
-    type: "PURGE_APP",
-    appId,
-  });
+export function purgeAppCache(appId) {
+  return sendSwMessage({ type: "PURGE_APP", appId });
 }

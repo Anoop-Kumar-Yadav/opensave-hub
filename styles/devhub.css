@@ -216,6 +216,7 @@
   white-space: nowrap;
 }
 .admin-badge-live { background: rgba(52, 199, 89, 0.16); color: #248a3d; }
+.admin-badge-approved { background: rgba(10, 132, 255, 0.16); color: #0066d6; }
 .admin-badge-pending { background: rgba(255, 149, 0, 0.16); color: #b25000; }
 .admin-badge-review { background: rgba(0, 122, 255, 0.15); color: var(--accent); }
 .admin-badge-soon { background: var(--bg-pill); color: var(--text-secondary); }
@@ -225,6 +226,7 @@
 .admin-badge-featured { background: rgba(255, 204, 0, 0.22); color: #9a6700; }
 
 [data-theme="dark"] .admin-badge-live { color: #30d158; }
+[data-theme="dark"] .admin-badge-approved { color: #409cff; }
 [data-theme="dark"] .admin-badge-pending { color: #ff9f0a; }
 [data-theme="dark"] .admin-badge-rejected { color: #ff453a; }
 [data-theme="dark"] .admin-badge-custom { color: #9e9bff; }

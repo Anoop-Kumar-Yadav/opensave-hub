@@ -1,4 +1,4 @@
-const SHELL_CACHE = "opensave-shell-v7";
+const SHELL_CACHE = "opensave-shell-v8";
 const SHELL_ASSETS = [
   "./",
   "./index.html",

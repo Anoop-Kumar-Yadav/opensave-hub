@@ -94,7 +94,7 @@ export async function saveSideloadedApp({ appId, meta, filesMap, rawZipBlob, tot
     version: (meta.version || "1.0.0").trim(),
     developer: (meta.developer || "Local Developer").trim(),
     sizeLabel: fmtSizeLabel(totalBytes),
-    status: "available",
+    status: (meta.status || "pending"),
     supportsOffline: true,
     isCustom: true,
     url: `./sideload/${cleanId}/index.html`,
