@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>DSA Board</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined">
+  <link rel="stylesheet" href="./styles/tokens.css">
+  <link rel="stylesheet" href="./styles/main.css">
+</head>
+<body>
+  <header id="tb" aria-label="Main toolbar"></header>
+
+  <section id="pal" aria-label="Value bubble palette">
+    <input id="pv" placeholder="Type a value, then drag its bubble onto a structure (Enter = keep bubble)">
+    <div class="bub" id="dr" hidden></div>
+    <span id="tray"></span>
+  </section>
+
+  <div id="workspace">
+    <aside id="ds-sidebar" aria-label="Data Structures Palette"></aside>
+
+    <main id="w">
+      <canvas id="cv"></canvas>
+      <input id="ti" hidden aria-label="Canvas text input">
+    </main>
+
+    <aside id="inspector" hidden aria-label="Property Inspector"></aside>
+  </div>
+
+  <div id="cm" hidden role="menu"></div>
+  <div id="fl" hidden role="dialog"></div>
+  <div id="ms" role="status" aria-live="polite"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

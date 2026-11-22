@@ -1,0 +1,18 @@
+{
+  "name": "OpenSave \u2014 Student & Dev Tools Hub",
+  "short_name": "OpenSave",
+  "description": "Free, offline-first productivity and developer mini-apps hub.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#007aff",
+  "icons": [
+    {
+      "src": "./icons/opensave-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

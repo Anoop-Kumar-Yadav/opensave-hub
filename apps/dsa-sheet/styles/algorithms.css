@@ -1,0 +1,243 @@
+/* Pure Algorithms Vault & Recursive Dynamic Sidebar */
+.algo-layout {
+  display: grid;
+  grid-template-columns: 295px minmax(0, 1fr);
+  gap: 32px;
+  align-items: start;
+}
+
+.algo-sidebar {
+  position: sticky;
+  top: 86px;
+}
+
+.algo-tree-panel {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 112px);
+  overflow: hidden;
+}
+
+.algo-tree-head {
+  padding: 15px 15px 12px;
+  border-bottom: 1px solid var(--line-soft);
+  display: grid;
+  gap: 10px;
+}
+
+.algo-tree-head-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.algo-tree-head input {
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.algo-tree-hint {
+  display: flex;
+  justify-content: space-between;
+  font: 10px 'DM Mono', monospace;
+  color: var(--mut);
+}
+
+.algo-tree-body {
+  overflow-y: auto;
+  padding: 8px 6px 12px;
+  display: grid;
+  gap: 2px;
+}
+
+.tree-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px 4px calc(8px + var(--depth, 0) * 14px);
+  border-radius: 7px;
+  transition: background 0.12s;
+}
+
+.tree-row:hover {
+  background: color-mix(in srgb, var(--soft) 65%, transparent);
+}
+
+.tree-algo.active {
+  background: var(--soft);
+}
+
+.tree-label-btn {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: 0;
+  padding: 3px 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  text-align: left;
+  color: var(--ink);
+}
+
+.tree-folder .tree-name {
+  font: 700 13px 'Manrope', sans-serif;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree-algo .tree-name {
+  font: 500 13px 'DM Sans', sans-serif;
+  color: var(--mut);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree-algo.active .tree-name {
+  color: var(--acc2);
+  font-weight: 700;
+}
+
+.tree-car {
+  font-size: 10px;
+  color: var(--mut);
+  width: 12px;
+  text-align: center;
+  transition: transform 0.16s;
+  flex: none;
+}
+
+.tree-car.open {
+  transform: rotate(90deg);
+}
+
+.tree-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--line);
+  margin-left: 3px;
+  flex: none;
+}
+
+.tree-algo.active .tree-dot {
+  background: var(--acc2);
+}
+
+.tree-cnt {
+  margin-left: auto;
+  font: 500 10px 'DM Mono', monospace;
+  color: var(--mut);
+  background: var(--bg);
+  border: 1px solid var(--line-soft);
+  padding: 1px 6px;
+  border-radius: 99px;
+  flex: none;
+}
+
+.tree-acts {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.12s;
+  flex: none;
+}
+
+.tree-row:hover .tree-acts,
+.tree-row:focus-within .tree-acts {
+  opacity: 1;
+}
+
+.tree-act {
+  border: 0;
+  background: transparent;
+  color: var(--mut);
+  font: 600 10px 'DM Mono', monospace;
+  padding: 2px 5px;
+  border-radius: 4px;
+}
+
+.tree-act:hover {
+  background: var(--card);
+  color: var(--acc2);
+}
+
+.tree-act.del:hover {
+  color: #b91c1c;
+  background: rgba(220, 38, 38, 0.1);
+}
+
+.tree-empty-branch {
+  padding: 4px 10px 6px calc(22px + var(--depth, 1) * 14px);
+  font: 11px 'DM Mono', monospace;
+  color: var(--mut-light);
+}
+
+.algo-main {
+  min-width: 0;
+}
+
+.algo-cx-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 10px;
+}
+
+.algo-cx-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 11px;
+  background: var(--bg);
+  border: 1px solid var(--line-soft);
+  border-radius: 7px;
+  font-size: 12px;
+  color: var(--mut);
+}
+
+.algo-cx-item strong {
+  font: 600 12px 'DM Mono', monospace;
+  color: var(--acc2);
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .algo-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+  .algo-sidebar {
+    position: static;
+  }
+  .algo-tree-panel {
+    max-height: 360px;
+  }
+  .tree-acts {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 1160px) {
+  :root[data-nav="left"] .algo-layout,
+  :root[data-nav="right"] .algo-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+  :root[data-nav="left"] .algo-sidebar,
+  :root[data-nav="right"] .algo-sidebar {
+    position: static;
+  }
+  :root[data-nav="left"] .algo-tree-panel,
+  :root[data-nav="right"] .algo-tree-panel {
+    max-height: 360px;
+  }
+}

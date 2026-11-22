@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en-IN" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#ffffff" />
+  <meta name="description" content="OpenSave — Free, offline-first productivity and developer mini-apps hub." />
+  <title>OpenSave</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" type="image/svg+xml" href="./icons/opensave-icon.svg" />
+
+  <!-- 100% Local Offline Stylesheet (Zero CDN dependency) -->
+  <link rel="stylesheet" href="./styles/appstore.css" />
+  <link rel="stylesheet" href="./styles/devhub.css" />
+
+  <style>
+    /* =========================================================
+       DESIGN TOKENS: LIGHT & DARK MODE (iOS / iPadOS / macOS)
+       ========================================================= */
+    :root {
+      --bg-primary: #ffffff;
+      --bg-secondary: #f2f2f7;
+      --bg-elevated: #ffffff;
+      --bg-grouped: #f5f5f7;
+      --bg-glass: rgba(255, 255, 255, 0.78);
+      --bg-glass-strong: rgba(248, 248, 250, 0.88);
+      --bg-pill: #eeeeef;
+      --bg-pill-hover: #e2e2e7;
+      --text-primary: #1d1d1f;
+      --text-secondary: #6e6e73;
+      --text-tertiary: #8e8e93;
+      --hairline: rgba(60, 60, 67, 0.14);
+      --hairline-subtle: rgba(60, 60, 67, 0.08);
+      --accent: #007aff;
+      --accent-hover: #0066d6;
+      --accent-soft: rgba(0, 122, 255, 0.12);
+      --card-shadow: 0 12px 32px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04);
+      --card-shadow-hover: 0 18px 42px rgba(0, 0, 0, 0.13), 0 4px 10px rgba(0, 0, 0, 0.06);
+      --modal-backdrop: rgba(0, 0, 0, 0.45);
+      --star-color: #ff9500;
+    }
+
+    [data-theme="dark"] {
+      --bg-primary: #000000;
+      --bg-secondary: #1c1c1e;
+      --bg-elevated: #1c1c1e;
+      --bg-grouped: #141416;
+      --bg-glass: rgba(28, 28, 30, 0.78);
+      --bg-glass-strong: rgba(22, 22, 24, 0.9);
+      --bg-pill: #2c2c2e;
+      --bg-pill-hover: #3a3a3c;
+      --text-primary: #f5f5f7;
+      --text-secondary: #98989d;
+      --text-tertiary: #6e6e73;
+      --hairline: rgba(255, 255, 255, 0.14);
+      --hairline-subtle: rgba(255, 255, 255, 0.08);
+      --accent: #0a84ff;
+      --accent-hover: #409cff;
+      --accent-soft: rgba(10, 132, 255, 0.18);
+      --card-shadow: 0 14px 36px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.35);
+      --card-shadow-hover: 0 20px 48px rgba(0, 0, 0, 0.65), 0 4px 12px rgba(0, 0, 0, 0.45);
+      --modal-backdrop: rgba(0, 0, 0, 0.72);
+      --star-color: #ff9f0a;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", system-ui, sans-serif;
+      transition: background-color 0.28s ease, color 0.28s ease;
+    }
+
+    .surface-primary { background-color: var(--bg-primary); }
+    .surface-secondary { background-color: var(--bg-secondary); }
+    .surface-elevated { background-color: var(--bg-elevated); }
+    .surface-grouped { background-color: var(--bg-grouped); }
+    .surface-glass {
+      background-color: var(--bg-glass);
+      backdrop-filter: blur(22px) saturate(180%);
+      -webkit-backdrop-filter: blur(22px) saturate(180%);
+    }
+    .surface-glass-strong {
+      background-color: var(--bg-glass-strong);
+      backdrop-filter: blur(26px) saturate(190%);
+      -webkit-backdrop-filter: blur(26px) saturate(190%);
+    }
+    .text-main { color: var(--text-primary); }
+    .text-sub { color: var(--text-secondary); }
+    .text-muted { color: var(--text-tertiary); }
+    .border-hairline { border-color: var(--hairline); }
+    .border-hairline-subtle { border-color: var(--hairline-subtle); }
+    .accent-text { color: var(--accent); }
+    .accent-bg { background-color: var(--accent); }
+
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    .squircle {
+      border-radius: 22.5%;
+      overflow: hidden;
+      box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.1);
+    }
+
+    .story-card {
+      box-shadow: var(--card-shadow);
+      transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .story-card:hover {
+      transform: translateY(-4px) scale(1.008);
+      box-shadow: var(--card-shadow-hover);
+    }
+    .story-card:active { transform: scale(0.985); }
+
+    .get-btn {
+      background-color: var(--bg-pill);
+      color: var(--accent);
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      transition: background-color 0.2s ease, transform 0.15s ease, color 0.2s ease;
+    }
+    .get-btn:hover { background-color: var(--bg-pill-hover); }
+    .get-btn:active { transform: scale(0.95); }
+    .get-btn-solid { background-color: var(--accent); color: #ffffff; }
+    .get-btn-solid:hover { background-color: var(--accent-hover); }
+    .get-btn-glass {
+      background-color: rgba(255, 255, 255, 0.22);
+      color: #ffffff;
+      backdrop-filter: blur(12px);
+    }
+    .get-btn-glass:hover { background-color: rgba(255, 255, 255, 0.34); }
+
+    .progress-ring-circle {
+      transition: stroke-dashoffset 0.09s linear;
+      transform: rotate(-90deg);
+      transform-origin: 50% 50%;
+    }
+
+    .sidebar-item {
+      color: var(--text-primary);
+      transition: background-color 0.18s ease, color 0.18s ease;
+    }
+    .sidebar-item:hover { background-color: var(--bg-pill); }
+    .sidebar-item[aria-current="page"] {
+      background-color: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .mobile-tab { color: var(--text-tertiary); transition: color 0.18s ease; }
+    .mobile-tab[aria-current="page"] { color: var(--accent); }
+
+    .cat-pill {
+      background-color: var(--bg-pill);
+      color: var(--text-primary);
+      transition: background-color 0.2s ease, color 0.2s ease, transform 0.15s ease;
+    }
+    .cat-pill:hover { background-color: var(--bg-pill-hover); }
+    .cat-pill[aria-pressed="true"] { background-color: var(--accent); color: #ffffff; }
+
+    .modal-backdrop {
+      background-color: var(--modal-backdrop);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: opacity 0.24s ease;
+    }
+    .modal-sheet {
+      transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.24s ease;
+    }
+
+    @keyframes viewFadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .view-enter { animation: viewFadeIn 0.26s cubic-bezier(0.22, 1, 0.36, 1); }
+
+    .pb-safe-tab { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px)); }
+    @media (min-width: 768px) { .pb-safe-tab { padding-bottom: 3rem; } }
+  </style>
+</head>
+<body class="overflow-x-hidden selection:bg-[#007aff] selection:text-white">
+
+  <div class="min-h-screen flex">
+
+    <!-- DESKTOP TRANSLUCENT LEFT SIDEBAR -->
+    <aside
+      aria-label="Primary Sidebar Navigation"
+      class="hidden md:flex md:flex-col md:w-64 lg:w-72 shrink-0 sticky top-0 h-screen surface-glass border-r border-hairline z-30 select-none"
+    >
+      <div class="px-5 pt-6 pb-4">
+        <div class="flex items-center justify-between mb-5">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 squircle flex items-center justify-center bg-gradient-to-b from-[#2ca8ff] to-[#0066e6] shadow-sm">
+              <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="5" />
+                <path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3" />
+              </svg>
+            </div>
+            <span class="text-[17px] font-bold tracking-tight text-main">OpenSave</span>
+          </div>
+
+          <button
+            type="button"
+            id="sidebarThemeToggle"
+            class="w-8 h-8 rounded-full flex items-center justify-center text-sub hover:text-main hover:bg-black/5 dark:hover:bg-white/10 transition"
+            aria-label="Toggle Light and Dark mode"
+            title="Toggle appearance"
+          >
+            <span class="theme-icon-slot"></span>
+          </button>
+        </div>
+
+        <div class="relative">
+          <svg class="w-3.5 h-3.5 text-muted absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="7.5" />
+            <path stroke-linecap="round" d="M20 20l-3.8-3.8" />
+          </svg>
+          <input
+            type="search"
+            id="sidebarQuickSearch"
+            placeholder="Search"
+            aria-label="Quick search OpenSave apps"
+            class="w-full pl-8 pr-3 py-1.5 rounded-xl text-[13px] surface-secondary text-main placeholder:text-muted border border-hairline-subtle focus:outline-none focus:ring-2 focus:ring-[#007aff]"
+          />
+        </div>
+      </div>
+
+      <nav class="flex-1 px-3 space-y-1 overflow-y-auto" id="desktopSidebarNav"></nav>
+
+      <!-- Sidebar Footer: Account & Storage Profile Pill -->
+      <div class="p-3 border-t border-hairline-subtle">
+        <button
+          type="button"
+          id="sidebarAccountBtn"
+          class="w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-black/5 dark:hover:bg-white/5 transition text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[#007aff]"
+          aria-label="Open Account, Storage and Updates"
+        >
+          <div class="relative shrink-0">
+            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-[#007aff] to-[#5856d6] text-white text-xs font-bold flex items-center justify-center shadow-sm">
+              OS
+            </div>
+            <span id="sidebarUpdateDot" class="hidden absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[#ff3b30] text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-[var(--bg-primary)]"></span>
+          </div>
+          <div class="min-w-0 flex-1">
+            <p class="text-[13px] font-semibold text-main truncate">OpenSave Hub</p>
+            <p id="sidebarUpdatesLabel" class="text-[11px] text-sub truncate">Offline · IndexedDB</p>
+          </div>
+          <svg class="w-4 h-4 text-muted shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT VIEWPORT -->
+    <div class="flex-1 min-w-0 flex flex-col">
+      <main id="mainContent" class="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 pt-5 sm:pt-8 pb-safe-tab"></main>
+    </div>
+  </div>
+
+  <!-- MOBILE FROSTED-GLASS BOTTOM TAB BAR -->
+  <nav
+    aria-label="Mobile Tab Navigation"
+    id="mobileBottomNav"
+    class="md:hidden fixed bottom-0 inset-x-0 z-30 surface-glass-strong border-t border-hairline px-2 pt-1.5 pb-[calc(0.45rem+env(safe-area-inset-bottom,0px))] grid grid-cols-5"
+  ></nav>
+
+  <!-- APP DETAIL MODAL (PRODUCT SHEET) -->
+  <div
+    id="productModal"
+    class="fixed inset-0 z-50 hidden items-end sm:items-center justify-center sm:p-6"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="detailAppTitle"
+  >
+    <div id="productModalBackdrop" class="modal-backdrop fixed inset-0 opacity-0"></div>
+    <div
+      id="productModalSheet"
+      class="modal-sheet relative z-10 w-full max-w-3xl max-h-[92vh] sm:max-h-[88vh] overflow-y-auto surface-elevated rounded-t-[28px] sm:rounded-[28px] border border-hairline shadow-2xl opacity-0 translate-y-8 sm:translate-y-4 sm:scale-95"
+    >
+      <div class="sticky top-0 z-20 surface-glass border-b border-hairline-subtle px-5 py-3 flex items-center justify-between">
+        <span id="detailSheetCategory" class="text-xs font-semibold uppercase tracking-wider text-sub">App Details</span>
+        <button
+          type="button"
+          id="closeProductModalBtn"
+          class="w-8 h-8 rounded-full surface-secondary text-sub hover:text-main flex items-center justify-center transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#007aff]"
+          aria-label="Close App Details"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        </button>
+      </div>
+      <div id="productModalBody" class="p-5 sm:p-7 space-y-7"></div>
+    </div>
+  </div>
+
+  <!-- ACCOUNT, STORAGE & UPDATES MODAL -->
+  <div
+    id="accountModal"
+    class="fixed inset-0 z-50 hidden items-end sm:items-center justify-center sm:p-6"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="accountModalTitle"
+  >
+    <div id="accountModalBackdrop" class="modal-backdrop fixed inset-0 opacity-0"></div>
+    <div
+      id="accountModalSheet"
+      class="modal-sheet relative z-10 w-full max-w-lg max-h-[90vh] overflow-y-auto surface-grouped rounded-t-[28px] sm:rounded-[28px] border border-hairline shadow-2xl opacity-0 translate-y-8 sm:translate-y-4 sm:scale-95"
+    >
+      <div class="sticky top-0 z-20 surface-glass border-b border-hairline-subtle px-5 py-3.5 flex items-center justify-between">
+        <h2 id="accountModalTitle" class="text-[17px] font-bold tracking-tight text-main">Account &amp; Storage</h2>
+        <button
+          type="button"
+          id="closeAccountModalBtn"
+          class="text-[15px] font-semibold accent-text hover:opacity-80 transition px-2 py-1 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[#007aff]"
+        >
+          Done
+        </button>
+      </div>
+      <div id="accountModalBody" class="p-5 space-y-6"></div>
+    </div>
+  </div>
+
+
+  <!-- ADD APP (.ZIP SIDELOAD) MODAL -->
+  <div
+    id="addAppModal"
+    class="fixed inset-0 z-50 hidden items-end sm:items-center justify-center sm:p-6"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="addAppModalTitle"
+  >
+    <div id="addAppModalBackdrop" class="modal-backdrop fixed inset-0 opacity-0"></div>
+    <div
+      id="addAppModalSheet"
+      class="modal-sheet relative z-10 w-full max-w-lg max-h-[90vh] overflow-y-auto surface-grouped rounded-t-[28px] sm:rounded-[28px] border border-hairline shadow-2xl opacity-0 translate-y-8 sm:translate-y-4 sm:scale-95"
+    >
+      <div class="sticky top-0 z-20 surface-glass border-b border-hairline-subtle px-5 py-3.5 flex items-center justify-between">
+        <h2 id="addAppModalTitle" class="text-[17px] font-bold tracking-tight text-main">Add Mini-App (.ZIP)</h2>
+        <button
+          type="button"
+          id="closeAddAppModalBtn"
+          class="text-[15px] font-semibold accent-text hover:opacity-80 transition px-2 py-1 rounded-lg"
+        >
+          Cancel
+        </button>
+      </div>
+      <div id="addAppModalBody" class="p-5 space-y-6"></div>
+    </div>
+  </div>
+
+  <!-- PUBLISH TO SERVER MODAL -->
+  <div
+    id="publishModal"
+    class="fixed inset-0 z-50 hidden items-end sm:items-center justify-center sm:p-6"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="publishModalTitle"
+  >
+    <div id="publishModalBackdrop" class="modal-backdrop fixed inset-0 opacity-0"></div>
+    <div
+      id="publishModalSheet"
+      class="modal-sheet relative z-10 w-full max-w-lg max-h-[90vh] overflow-y-auto surface-grouped rounded-t-[28px] sm:rounded-[28px] border border-hairline shadow-2xl opacity-0 translate-y-8 sm:translate-y-4 sm:scale-95"
+    >
+      <div class="sticky top-0 z-20 surface-glass border-b border-hairline-subtle px-5 py-3.5 flex items-center justify-between">
+        <h2 id="publishModalTitle" class="text-[17px] font-bold tracking-tight text-main">Publish to OpenSave</h2>
+        <button
+          type="button"
+          id="closePublishModalBtn"
+          class="text-[15px] font-semibold accent-text hover:opacity-80 transition px-2 py-1 rounded-lg"
+        >
+          Close
+        </button>
+      </div>
+      <div id="publishModalBody" class="p-5 space-y-6"></div>
+    </div>
+  </div>
+
+  <!-- EMBEDDED MINI-APP WORKSPACE HOST -->
+  <div id="workspaceHost" class="fixed inset-0 z-50 hidden flex-col surface-primary">
+    <div class="h-12 px-4 surface-glass-strong border-b border-hairline flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3 min-w-0">
+        <button
+          type="button"
+          id="closeWorkspaceBtn"
+          class="get-btn px-3.5 py-1 rounded-full text-xs inline-flex items-center gap-1.5"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+          <span>OpenSave</span>
+        </button>
+        <span id="workspaceTitle" class="text-sm font-bold text-main truncate"></span>
+        <span id="workspaceVer" class="text-[11px] text-sub hidden sm:inline"></span>
+      </div>
+      <button
+        type="button"
+        id="openWorkspaceTabBtn"
+        class="get-btn px-3.5 py-1 rounded-full text-xs inline-flex items-center gap-1.5"
+      >
+        <span>Open in Tab</span>
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/></svg>
+      </button>
+    </div>
+    <iframe id="workspaceFrame" class="flex-1 w-full border-0 surface-primary" title="Mini-App Workspace"></iframe>
+  </div>
+
+  <!-- SUBTLE FLOATING TOAST NOTIFICATION -->
+  <div
+    id="toastContainer"
+    role="status"
+    aria-live="polite"
+    class="fixed top-5 left-1/2 -translate-x-1/2 z-[60] pointer-events-none opacity-0 -translate-y-3 transition-all duration-300"
+  >
+    <div class="px-4 py-2.5 rounded-full surface-glass-strong border border-hairline shadow-xl flex items-center gap-2.5 text-xs sm:text-[13px] font-semibold text-main">
+      <span class="w-5 h-5 rounded-full bg-[#34c759]/15 text-[#34c759] flex items-center justify-center shrink-0">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+      </span>
+      <span id="toastMessage">Ready</span>
+    </div>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

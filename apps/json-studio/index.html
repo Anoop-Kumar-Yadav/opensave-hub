@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JSON Studio | OpenSave</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f7f8f6; --card: #ffffff; --ink: #1e231f; --mut: #59635a;
+      --line: #e4e8e2; --acc: #243d32; --acc2: #2d6548; --soft: #edf3ee;
+      --code-bg: #1b221e; --code-ink: #dce6dd; --err: #b91c1c; --ok: #2d7a4f;
+    }
+    :root[data-theme="dark"] {
+      --bg: #111512; --card: #181e1a; --ink: #e8eee8; --mut: #94a396;
+      --line: #28322b; --acc: #2d6548; --acc2: #6eb889; --soft: #1f2e24;
+      --code-bg: #0e1310; --code-ink: #dce6dd; --err: #f87171; --ok: #6fb57f;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.6 'DM Sans', system-ui, sans-serif; min-height: 100vh; display: flex; flex-direction: column; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--line); background: var(--card); flex-wrap: wrap; }
+    .title { display: flex; align-items: center; gap: 10px; font: 800 16px 'Manrope', sans-serif; letter-spacing: -0.02em; }
+    .badge { font: 500 11px 'DM Mono', monospace; color: var(--acc2); background: var(--soft); padding: 3px 8px; border-radius: 99px; }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn { border: 1px solid var(--line); background: var(--card); color: var(--ink); padding: 6px 12px; border-radius: 7px; font: 500 13px 'DM Sans', sans-serif; cursor: pointer; }
+    .btn:hover { border-color: var(--acc2); color: var(--acc2); background: var(--soft); }
+    .btn.p { background: var(--acc); border-color: var(--acc); color: #fff; }
+    .btn.p:hover { background: var(--acc2); border-color: var(--acc2); color: #fff; }
+    main { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 18px 20px; max-width: 1280px; width: 100%; margin: 0 auto; }
+    .pane { display: flex; flex-direction: column; gap: 8px; min-height: 460px; }
+    .pane-head { display: flex; justify-content: space-between; align-items: center; font: 500 11px 'DM Mono', monospace; color: var(--mut); letter-spacing: 0.8px; }
+    textarea { flex: 1; width: 100%; resize: none; padding: 14px; border-radius: 9px; border: 1px solid var(--line); background: var(--code-bg); color: var(--code-ink); font: 13px/1.65 'DM Mono', monospace; outline: none; }
+    textarea:focus { border-color: var(--acc2); }
+    .status { padding: 10px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); font: 12px 'DM Mono', monospace; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .status.ok { border-color: color-mix(in srgb, var(--ok) 45%, var(--line)); color: var(--ok); }
+    .status.err { border-color: color-mix(in srgb, var(--err) 45%, var(--line)); color: var(--err); }
+    @media (max-width: 800px) { main { grid-template-columns: 1fr; } .pane { min-height: 280px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="title">JSON Studio <span class="badge">OFFLINE</span></div>
+    <div class="actions">
+      <button class="btn p" id="fmt">Prettify (2 spaces)</button>
+      <button class="btn" id="min">Minify</button>
+      <button class="btn" id="sort">Sort Keys</button>
+      <button class="btn" id="copy">Copy Output</button>
+      <button class="btn" id="sample">Load Sample</button>
+      <button class="btn" id="clear">Clear</button>
+    </div>
+  </header>
+  <main>
+    <div class="pane">
+      <div class="pane-head"><span>INPUT JSON</span><span id="in-size">0 B</span></div>
+      <textarea id="input" spellcheck="false" placeholder="Paste raw JSON payload here..."></textarea>
+    </div>
+    <div class="pane">
+      <div class="pane-head"><span>FORMATTED OUTPUT</span><span id="out-size">0 B</span></div>
+      <textarea id="output" spellcheck="false" readonly placeholder="Formatted output appears here..."></textarea>
+      <div class="status" id="status"><span>Ready — paste JSON to validate</span><span id="stats"></span></div>
+    </div>
+  </main>
+  <script type="module">
+    import { OpenSaveStorage, connectToHub } from "../../packages/sdk/opensave-sdk.js";
+
+    const store = new OpenSaveStorage("json-studio");
+    const $ = (id) => document.getElementById(id);
+    const input = $("input"), output = $("output"), status = $("status"), stats = $("stats");
+
+    const applyTheme = (t) => {
+      document.documentElement.dataset.theme = t || (matchMedia("(prefers-color-scheme:dark)").matches ? "dark" : "light");
+    };
+    applyTheme(localStorage.getItem("opensave-theme"));
+    connectToHub({ onTheme: applyTheme });
+
+    const fmtBytes = (str) => {
+      const b = new Blob([str]).size;
+      return b < 1024 ? `${b} B` : `${(b / 1024).toFixed(1)} KB`;
+    };
+
+    const sortObj = (v) => {
+      if (Array.isArray(v)) return v.map(sortObj);
+      if (v && typeof v === "object") {
+        return Object.keys(v).sort().reduce((acc, k) => { acc[k] = sortObj(v[k]); return acc; }, {});
+      }
+      return v;
+    };
+
+    const countKeys = (v) => {
+      if (Array.isArray(v)) return v.reduce((a, x) => a + countKeys(x), 0);
+      if (v && typeof v === "object") return Object.keys(v).length + Object.values(v).reduce((a, x) => a + countKeys(x), 0);
+      return 0;
+    };
+
+    function run(mode = "pretty") {
+      const raw = input.value;
+      $("in-size").textContent = fmtBytes(raw);
+      store.set("lastInput", raw).catch(() => {});
+      if (!raw.trim()) {
+        output.value = "";
+        $("out-size").textContent = "0 B";
+        status.className = "status";
+        status.firstElementChild.textContent = "Ready — paste JSON to validate";
+        stats.textContent = "";
+        return;
+      }
+      try {
+        let parsed = JSON.parse(raw);
+        if (mode === "sort") parsed = sortObj(parsed);
+        const formatted = mode === "min" ? JSON.stringify(parsed) : JSON.stringify(parsed, null, 2);
+        output.value = formatted;
+        $("out-size").textContent = fmtBytes(formatted);
+        status.className = "status ok";
+        status.firstElementChild.textContent = "Valid JSON";
+        const type = Array.isArray(parsed) ? `Array(${parsed.length})` : typeof parsed === "object" && parsed ? `Object(${Object.keys(parsed).length} top keys)` : typeof parsed;
+        stats.textContent = `${type} · ${countKeys(parsed)} total keys`;
+      } catch (e) {
+        status.className = "status err";
+        status.firstElementChild.textContent = e.message;
+        stats.textContent = "";
+      }
+    }
+
+    input.addEventListener("input", () => run("pretty"));
+    $("fmt").onclick = () => run("pretty");
+    $("min").onclick = () => run("min");
+    $("sort").onclick = () => run("sort");
+    $("clear").onclick = () => { input.value = ""; run(); };
+    $("sample").onclick = () => {
+      input.value = JSON.stringify({
+        platform: "OpenSave",
+        offlineFirst: true,
+        miniApps: ["DSA.sheet", "JSON Studio"],
+        limits: { priceINR: 0, cloudSyncReady: true }
+      });
+      run("pretty");
+    };
+    $("copy").onclick = () => {
+      if (!output.value) return;
+      navigator.clipboard?.writeText(output.value).then(() => {
+        $("copy").textContent = "Copied";
+        setTimeout(() => ($("copy").textContent = "Copy Output"), 1400);
+      });
+    };
+
+    store.get("lastInput").then((saved) => {
+      if (saved) { input.value = saved; run("pretty"); }
+    }).catch(() => {});
+  </script>
+</body>
+</html>
