@@ -5,13 +5,7 @@ import {
   exportAllRecords,
   importAllRecords,
 } from "../packages/sdk/opensave-sdk.js";
-import {
-  isDriveConnected,
-  signInWithGoogle,
-  signOutGoogle,
-  backupToGoogleDrive,
-  restoreFromGoogleDrive,
-} from "./services/driveSync.js";
+
 import { unpackZipFile, createStarterTemplateZip } from "./services/zipReader.js";
 import {
   saveSideloadedApp,
@@ -23,15 +17,16 @@ import {
 import { renderDocsView } from "./ui/docsView.js";
 import { renderAdminView } from "./ui/adminView.js";
 import {
-  getAdminSession,
-  signInAdminWithGoogle,
-  signOutAdmin,
-  onAdminAuthChange,
-} from "./services/adminAuth.js";
+  getAuthSession,
+  signInWithGoogle,
+  signOut,
+  onAuthChange,
+  backupToSupabase,
+  restoreFromSupabase,
+} from "./services/supabaseService.js";
 
 const HUB_KEY = "opensave-hub-v1";
 
-const DEFAULT_GOOGLE_CLIENT_ID = "715253690690-ekiahcv786s1ibs092bdhe0qe9dq54lg.apps.googleusercontent.com";
 const DEFAULT_GITHUB_REPO = "Anoop-Kumar-Yadav/opensave-hub";
 
 const DEFAULT_HUB = () => ({
@@ -40,11 +35,9 @@ const DEFAULT_HUB = () => ({
     launchMode: "embedded",
     theme: null,
     publishEndpoint: "/api/v1/apps/publish",
-    googleClientId: DEFAULT_GOOGLE_CLIENT_ID,
     githubRepo: DEFAULT_GITHUB_REPO,
   },
-  googleUser: null,
-  lastDriveSync: null,
+  lastCloudSync: null,
   adminOverrides: {},
   installed: {
     "dsa-sheet": {
@@ -63,10 +56,8 @@ try {
     if (parsed.settings) Object.assign(hub.settings, parsed.settings);
     if (parsed.installed) hub.installed = parsed.installed;
     if (Array.isArray(parsed.customApps)) hub.customApps = parsed.customApps;
-    if (parsed.googleUser) hub.googleUser = parsed.googleUser;
-    if (parsed.lastDriveSync) hub.lastDriveSync = parsed.lastDriveSync;
+    if (parsed.lastCloudSync) hub.lastCloudSync = parsed.lastCloudSync;
     if (parsed.adminOverrides && typeof parsed.adminOverrides === "object") hub.adminOverrides = parsed.adminOverrides;
-    if (!hub.settings.googleClientId) hub.settings.googleClientId = DEFAULT_GOOGLE_CLIENT_ID;
     if (!hub.settings.githubRepo) hub.settings.githubRepo = DEFAULT_GITHUB_REPO;
   }
 } catch {
@@ -96,9 +87,9 @@ const state = {
   addAppModalOpen: false,
   publishAppId: null,
   publishBusy: false,
-  driveBusy: false,
-  adminAuth: { user: null, email: "", name: "", role: "user", isAdmin: false },
-  adminAuthBusy: false,
+  cloudBusy: false,
+  auth: { user: null, email: "", name: "", role: "user", isAdmin: false },
+  authBusy: false,
   adminFilter: "all",
   adminSearch: "",
   githubQueue: null,
@@ -506,7 +497,7 @@ function renderNavigation() {
           ${DOCS_TAB.icon}
           <span>${DOCS_TAB.label}</span>
         </button>
-        ${state.adminAuth.isAdmin ? `
+        ${state.auth.isAdmin ? `
         <button
           type="button"
           data-tab="${ADMIN_TAB.id}"
@@ -1310,58 +1301,29 @@ function renderAccountModalBody() {
       </div>
     </div>
 
-    <!-- Admin Role Authentication (Supabase) -->
+    <!-- Account & Cloud Backup (Supabase) -->
     <section>
-      <h3 class="text-xs font-bold uppercase tracking-wider text-sub mb-2.5 px-1">Admin Access (Supabase Auth)</h3>
-      <div class="surface-elevated rounded-2xl p-4 border border-hairline-subtle space-y-3">
-        ${state.adminAuth.user ? `
-          <div class="flex items-center justify-between gap-3">
-            <div class="min-w-0">
-              <p class="text-sm font-bold text-main truncate">${escAttr(state.adminAuth.name || state.adminAuth.email)}</p>
-              <p class="text-[11px] text-sub truncate">${escAttr(state.adminAuth.email)} · Role: <strong>${escAttr(state.adminAuth.role)}</strong></p>
-            </div>
-            <button type="button" id="adminSignOutBtn" class="text-xs font-semibold text-[#ff3b30] hover:underline shrink-0">Sign Out</button>
-          </div>
-          ${state.adminAuth.isAdmin ? `
-            <div class="pt-2.5 border-t border-hairline-subtle flex items-center justify-between gap-2">
-              <span class="text-[11px] font-semibold text-[#34c759]">Admin role verified via JWT</span>
-              <button type="button" id="openAdminFromAccountBtn" class="get-btn get-btn-solid px-3.5 py-1 rounded-full text-xs">Open Admin</button>
-            </div>
-          ` : `
-            <p class="text-[11px] text-sub pt-2 border-t border-hairline-subtle">Signed in as standard user. Grant <code>role: "admin"</code> in Supabase SQL Editor and sign in again to unlock Admin.</p>
-          `}
-        ` : `
-          <div class="flex items-center justify-between gap-3 flex-wrap">
-            <span class="text-[11px] text-sub">Store owners sign in to unlock Admin Dashboard</span>
-            <button type="button" id="adminSignInBtn" ${state.adminAuthBusy ? "disabled" : ""} class="get-btn px-4 py-1.5 rounded-full text-xs">${state.adminAuthBusy ? "Redirecting..." : "Admin Sign In"}</button>
-          </div>
-        `}
-      </div>
-    </section>
-
-    <!-- Google Login & Drive Cloud Backup (Zero Backend) -->
-    <section>
-      <h3 class="text-xs font-bold uppercase tracking-wider text-sub mb-2.5 px-1">Google Drive Cloud Sync (Free)</h3>
+      <h3 class="text-xs font-bold uppercase tracking-wider text-sub mb-2.5 px-1">Account &amp; Cloud Backup</h3>
       <div class="surface-elevated rounded-2xl p-4 border border-hairline-subtle space-y-3.5">
-        ${hub.googleUser ? `
+        ${state.auth.user ? `
           <div class="flex items-center justify-between gap-3">
             <div class="min-w-0">
-              <p class="text-sm font-bold text-main truncate">${escAttr(hub.googleUser.name)}</p>
-              <p class="text-[11px] text-sub truncate">${escAttr(hub.googleUser.email)} · ${isDriveConnected() ? "Connected" : "Session expired (click sync)"}</p>
+              <p class="text-sm font-bold text-main truncate">${escAttr(state.auth.name || state.auth.email)}</p>
+              <p class="text-[11px] text-sub truncate">${escAttr(state.auth.email)}</p>
             </div>
-            <button type="button" id="googleSignOutBtn" class="text-xs font-semibold text-[#ff3b30] hover:underline shrink-0">Sign Out</button>
+            <button type="button" id="authSignOutBtn" class="get-btn px-3.5 py-1.5 rounded-full text-xs text-[#ff3b30] shrink-0">Sign Out</button>
           </div>
           <div class="pt-3 border-t border-hairline-subtle flex flex-wrap items-center justify-between gap-2">
-            <span class="text-[11px] text-sub">${hub.lastDriveSync ? `Last sync: ${new Date(hub.lastDriveSync).toLocaleString("en-IN")}` : "Not backed up to Drive yet"}</span>
+            <span class="text-[11px] text-sub">${hub.lastCloudSync ? `Last sync: ${new Date(hub.lastCloudSync).toLocaleString("en-IN")}` : "Not backed up yet"}</span>
             <div class="flex gap-2">
-              <button type="button" id="driveBackupBtn" ${state.driveBusy ? "disabled" : ""} class="get-btn get-btn-solid px-3.5 py-1.5 rounded-full text-xs">${state.driveBusy ? "Syncing..." : "Backup to Drive"}</button>
-              <button type="button" id="driveRestoreBtn" ${state.driveBusy ? "disabled" : ""} class="get-btn px-3.5 py-1.5 rounded-full text-xs">Restore</button>
+              <button type="button" id="cloudBackupBtn" ${state.cloudBusy ? "disabled" : ""} class="get-btn get-btn-solid px-3.5 py-1.5 rounded-full text-xs">${state.cloudBusy ? "Syncing..." : "Backup"}</button>
+              <button type="button" id="cloudRestoreBtn" ${state.cloudBusy ? "disabled" : ""} class="get-btn px-3.5 py-1.5 rounded-full text-xs">Restore</button>
             </div>
           </div>
         ` : `
           <div class="flex items-center justify-between gap-3 flex-wrap">
-            <span class="text-[11px] text-sub">Private backup in Drive <code>appDataFolder</code></span>
-            <button type="button" id="googleSignInBtn" ${state.driveBusy ? "disabled" : ""} class="get-btn get-btn-solid px-4 py-1.5 rounded-full text-xs">${state.driveBusy ? "Signing in..." : "Sign in with Google"}</button>
+            <span class="text-xs text-sub">Sign in to back up and sync your data</span>
+            <button type="button" id="authSignInBtn" ${state.authBusy ? "disabled" : ""} class="get-btn get-btn-solid px-4 py-1.5 rounded-full text-xs">${state.authBusy ? "Signing in..." : "Sign In"}</button>
           </div>
         `}
       </div>
@@ -1498,7 +1460,7 @@ function refreshVisibleUI() {
 }
 
 function switchTab(tabId) {
-  if (tabId === "admin" && !state.adminAuth.isAdmin) {
+  if (tabId === "admin" && !state.auth.isAdmin) {
     showToast("Admin access requires an authorized Supabase Admin account");
     return;
   }
@@ -2026,34 +1988,72 @@ publishBody.addEventListener("click", async (e) => {
 document.getElementById("closeAccountModalBtn").addEventListener("click", closeAccountModal);
 document.getElementById("accountModalBackdrop").addEventListener("click", closeAccountModal);
 document.getElementById("accountModalBody").addEventListener("click", async (e) => {
-  if (e.target.closest("#openAdminFromAccountBtn")) {
-    closeAccountModal();
-    setTimeout(() => switchTab("admin"), 250);
-    return;
-  }
-  if (e.target.closest("#adminSignInBtn")) {
-    state.adminAuthBusy = true;
+  if (e.target.closest("#authSignInBtn")) {
+    state.authBusy = true;
     renderAccountModalBody();
     try {
-      await signInAdminWithGoogle();
+      await signInWithGoogle();
     } catch (err) {
-      state.adminAuthBusy = false;
+      state.authBusy = false;
       renderAccountModalBody();
-      showToast(err.message || "Admin sign-in failed");
+      showToast(err.message || "Sign in failed");
     }
     return;
   }
-  if (e.target.closest("#adminSignOutBtn")) {
+  if (e.target.closest("#authSignOutBtn")) {
     try {
-      await signOutAdmin();
-      state.adminAuth = { user: null, email: "", name: "", role: "user", isAdmin: false };
+      await signOut();
+      state.auth = { user: null, email: "", name: "", role: "user", isAdmin: false };
       if (state.activeTab === "admin") state.activeTab = "today";
       renderNavigation();
       renderActiveTab();
       renderAccountModalBody();
-      showToast("Signed out of Admin session");
+      showToast("Signed out");
     } catch (err) {
       showToast(err.message || "Sign out failed");
+    }
+    return;
+  }
+  if (e.target.closest("#cloudBackupBtn")) {
+    state.cloudBusy = true;
+    renderAccountModalBody();
+    try {
+      const records = await exportAllRecords();
+      await backupToSupabase({
+        schemaVersion: 1,
+        backedUpAt: new Date().toISOString(),
+        hub: { settings: hub.settings, installed: hub.installed, customApps: hub.customApps },
+        records,
+      });
+      hub.lastCloudSync = Date.now();
+      saveHub();
+      showToast(`Backed up ${records.length} app record(s) to cloud`);
+    } catch (err) {
+      showToast(err.message || "Cloud backup failed");
+    } finally {
+      state.cloudBusy = false;
+      renderAccountModalBody();
+    }
+    return;
+  }
+  if (e.target.closest("#cloudRestoreBtn")) {
+    if (!confirm("Restore your OpenSave Hub and mini-app data from cloud? This overwrites local state.")) return;
+    state.cloudBusy = true;
+    renderAccountModalBody();
+    try {
+      const { data } = await restoreFromSupabase();
+      if (data?.hub?.installed) hub.installed = data.hub.installed;
+      if (data?.hub?.settings) Object.assign(hub.settings, data.hub.settings);
+      saveHub();
+      const restoredCount = await importAllRecords(data?.records || []);
+      refreshStorageInfo();
+      refreshVisibleUI();
+      showToast(`Restored ${restoredCount} app record(s) from cloud`);
+    } catch (err) {
+      showToast(err.message || "Cloud restore failed");
+    } finally {
+      state.cloudBusy = false;
+      renderAccountModalBody();
     }
     return;
   }
@@ -2085,81 +2085,6 @@ document.getElementById("accountModalBody").addEventListener("click", async (e) 
     const ok = await requestPersistentStorage();
     await refreshStorageInfo();
     showToast(ok ? "Persistent storage enabled" : "Browser manages persistence automatically");
-    return;
-  }
-  if (e.target.closest("#googleSignInBtn")) {
-    const cid = hub.settings.googleClientId || DEFAULT_GOOGLE_CLIENT_ID;
-    state.driveBusy = true;
-    renderAccountModalBody();
-    try {
-      const profile = await signInWithGoogle(cid, { prompt: "consent" });
-      hub.googleUser = profile;
-      saveHub();
-      showToast(`Signed in as ${profile.name}`);
-    } catch (err) {
-      showToast(err.message || "Google sign-in failed");
-    } finally {
-      state.driveBusy = false;
-      renderAccountModalBody();
-    }
-    return;
-  }
-  if (e.target.closest("#googleSignOutBtn")) {
-    signOutGoogle();
-    hub.googleUser = null;
-    saveHub();
-    renderAccountModalBody();
-    showToast("Signed out of Google");
-    return;
-  }
-  if (e.target.closest("#driveBackupBtn")) {
-    state.driveBusy = true;
-    renderAccountModalBody();
-    try {
-      const records = await exportAllRecords();
-      await backupToGoogleDrive({
-        clientId: hub.settings.googleClientId,
-        emailHint: hub.googleUser?.email || "",
-        payload: {
-          schemaVersion: 1,
-          backedUpAt: new Date().toISOString(),
-          hub: { settings: hub.settings, installed: hub.installed, customApps: hub.customApps },
-          records,
-        },
-      });
-      hub.lastDriveSync = Date.now();
-      saveHub();
-      showToast(`Backed up ${records.length} app record(s) to Google Drive`);
-    } catch (err) {
-      showToast(err.message || "Drive backup failed");
-    } finally {
-      state.driveBusy = false;
-      renderAccountModalBody();
-    }
-    return;
-  }
-  if (e.target.closest("#driveRestoreBtn")) {
-    if (!confirm("Restore your OpenSave Hub and mini-app data from Google Drive? This overwrites local state.")) return;
-    state.driveBusy = true;
-    renderAccountModalBody();
-    try {
-      const { data } = await restoreFromGoogleDrive({
-        clientId: hub.settings.googleClientId,
-        emailHint: hub.googleUser?.email || "",
-      });
-      if (data?.hub?.installed) hub.installed = data.hub.installed;
-      if (data?.hub?.settings) Object.assign(hub.settings, data.hub.settings);
-      saveHub();
-      const restoredCount = await importAllRecords(data?.records || []);
-      refreshStorageInfo();
-      refreshVisibleUI();
-      showToast(`Restored ${restoredCount} app record(s) from Google Drive`);
-    } catch (err) {
-      showToast(err.message || "Drive restore failed");
-    } finally {
-      state.driveBusy = false;
-      renderAccountModalBody();
-    }
     return;
   }
   if (e.target.closest("#syncFolderBtn")) {
@@ -2195,13 +2120,13 @@ window.addEventListener("beforeinstallprompt", (e) => {
 });
 
 // Boot
-getAdminSession().then((session) => {
-  state.adminAuth = session;
+getAuthSession().then((session) => {
+  state.auth = session;
   renderNavigation();
   if (state.accountModalOpen) renderAccountModalBody();
 });
-onAdminAuthChange((session) => {
-  state.adminAuth = session;
+onAuthChange((session) => {
+  state.auth = session;
   if (!session.isAdmin && state.activeTab === "admin") {
     state.activeTab = "today";
     renderActiveTab();
