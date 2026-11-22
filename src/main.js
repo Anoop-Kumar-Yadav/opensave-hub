@@ -21,8 +21,12 @@ import {
   slugifyAppId,
 } from "./services/sideloadService.js";
 import { renderDocsView } from "./ui/docsView.js";
+import { renderAdminView } from "./ui/adminView.js";
 
 const HUB_KEY = "opensave-hub-v1";
+
+const DEFAULT_GOOGLE_CLIENT_ID = "715253690690-ekiahcv786s1ibs092bdhe0qe9dq54lg.apps.googleusercontent.com";
+const DEFAULT_GITHUB_REPO = "Anoop-Kumar-Yadav/opensave-hub";
 
 const DEFAULT_HUB = () => ({
   settings: {
@@ -30,11 +34,12 @@ const DEFAULT_HUB = () => ({
     launchMode: "embedded",
     theme: null,
     publishEndpoint: "/api/v1/apps/publish",
-    googleClientId: "",
-    githubRepo: "",
+    googleClientId: DEFAULT_GOOGLE_CLIENT_ID,
+    githubRepo: DEFAULT_GITHUB_REPO,
   },
   googleUser: null,
   lastDriveSync: null,
+  adminOverrides: {},
   installed: {
     "dsa-sheet": {
       installedVersion: "1.8.0",
@@ -54,6 +59,9 @@ try {
     if (Array.isArray(parsed.customApps)) hub.customApps = parsed.customApps;
     if (parsed.googleUser) hub.googleUser = parsed.googleUser;
     if (parsed.lastDriveSync) hub.lastDriveSync = parsed.lastDriveSync;
+    if (parsed.adminOverrides && typeof parsed.adminOverrides === "object") hub.adminOverrides = parsed.adminOverrides;
+    if (!hub.settings.googleClientId) hub.settings.googleClientId = DEFAULT_GOOGLE_CLIENT_ID;
+    if (!hub.settings.githubRepo) hub.settings.githubRepo = DEFAULT_GITHUB_REPO;
   }
 } catch {
   // Ignore corrupted storage
@@ -83,6 +91,11 @@ const state = {
   publishAppId: null,
   publishBusy: false,
   driveBusy: false,
+  adminFilter: "all",
+  adminSearch: "",
+  githubQueue: null,
+  githubLoading: false,
+  githubError: null,
   publishResult: null,
   activeWorkspaceApp: null,
   storage: { usage: 0, quota: 0, persisted: false, percent: 0 },
@@ -129,11 +142,28 @@ const DOCS_TAB = {
   icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
 };
 
+const ADMIN_TAB = {
+  id: "admin",
+  label: "Admin",
+  icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3l7 4v5c0 4.5-3 7.8-7 9-4-1.2-7-4.5-7-9V7l7-4z"/><path stroke-linecap="round" stroke-linejoin="round" d="M9.5 12.2l1.8 1.8 3.7-3.8"/></svg>`,
+};
+
 function getAllApps() {
   const map = new Map();
-  for (const app of state.catalog) map.set(app.id, app);
-  for (const custom of hub.customApps || []) map.set(custom.id, custom);
+  const overrides = hub.adminOverrides || {};
+  for (const app of state.catalog) {
+    const ov = overrides[app.id];
+    map.set(app.id, ov ? { ...app, ...ov } : app);
+  }
+  for (const custom of hub.customApps || []) {
+    const ov = overrides[custom.id];
+    map.set(custom.id, ov ? { ...custom, ...ov } : custom);
+  }
   return [...map.values()];
+}
+
+function getStoreVisibleApps() {
+  return getAllApps().filter((a) => a.status === "available" || a.status === "coming_soon");
 }
 
 function getAppById(id) {
@@ -468,6 +498,15 @@ function renderNavigation() {
           ${DOCS_TAB.icon}
           <span>${DOCS_TAB.label}</span>
         </button>
+        <button
+          type="button"
+          data-tab="${ADMIN_TAB.id}"
+          aria-current="${state.activeTab === ADMIN_TAB.id ? "page" : "false"}"
+          class="sidebar-item w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[14px] font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-[#007aff]"
+        >
+          ${ADMIN_TAB.icon}
+          <span>${ADMIN_TAB.label}</span>
+        </button>
       </div>
     `;
 
@@ -567,8 +606,8 @@ function renderAppRow(app, rank = null) {
 }
 
 function renderTodayView() {
-  const apps = getAllApps();
-  const dsa = getAppById("dsa-sheet");
+  const apps = getStoreVisibleApps();
+  const dsa = apps.find((a) => a.id === "dsa-sheet");
   const board = getAppById("dsa-board") || getAppById("json-studio");
   const liveApps = apps.filter((a) => a.status === "available");
   const roadmapApps = apps.filter((a) => a.status !== "available");
@@ -677,7 +716,7 @@ function renderTodayView() {
 function renderCatalogTabView(sectionType) {
   const isTools = sectionType === "tools";
   const title = isTools ? "Dev Tools" : "Apps";
-  const sectionApps = getAllApps().filter((i) => i.section === sectionType);
+  const sectionApps = getStoreVisibleApps().filter((i) => i.section === sectionType);
   const categories = ["All", ...new Set(sectionApps.map((i) => i.category))];
   const activeCat = isTools ? state.toolsCategory : state.appsCategory;
 
@@ -810,7 +849,7 @@ function renderInstalledView() {
 }
 
 function renderSearchView() {
-  const allApps = getAllApps();
+  const allApps = getStoreVisibleApps();
   const q = state.searchQuery.trim().toLowerCase();
   const trending = ["DSA", "Canvas", "JSON", "Spaced Repetition", "Offline"];
   const matches = q
@@ -1282,12 +1321,8 @@ function renderAccountModalBody() {
             </div>
           </div>
         ` : `
-          <div class="os-field">
-            <label for="googleClientIdInput">Google OAuth Web Client ID</label>
-            <input id="googleClientIdInput" value="${escAttr(hub.settings.googleClientId || "")}" placeholder="123456789-xxxx.apps.googleusercontent.com" />
-          </div>
           <div class="flex items-center justify-between gap-3 flex-wrap">
-            <span class="text-[11px] text-sub">Stores backup privately in Drive <code>appDataFolder</code></span>
+            <span class="text-[11px] text-sub">Private backup in Drive <code>appDataFolder</code></span>
             <button type="button" id="googleSignInBtn" ${state.driveBusy ? "disabled" : ""} class="get-btn get-btn-solid px-4 py-1.5 rounded-full text-xs">${state.driveBusy ? "Signing in..." : "Sign in with Google"}</button>
           </div>
         `}
@@ -1389,6 +1424,19 @@ function renderActiveTab() {
   else if (state.activeTab === "installed") html = renderInstalledView();
   else if (state.activeTab === "search") html = renderSearchView();
   else if (state.activeTab === "docs") html = renderDocsView(renderPageHeader("Developer Docs", "BUILD FOR OPENSAVE"));
+  else if (state.activeTab === "admin") {
+    html = renderAdminView({
+      headerHtml: renderPageHeader("Admin Dashboard", "STORE MANAGEMENT"),
+      apps: getAllApps(),
+      filterStatus: state.adminFilter,
+      searchQuery: state.adminSearch,
+      githubRepo: hub.settings.githubRepo || DEFAULT_GITHUB_REPO,
+      githubQueue: state.githubQueue,
+      githubLoading: state.githubLoading,
+      githubError: state.githubError,
+      renderAppIcon,
+    });
+  }
   main.innerHTML = html;
 }
 
@@ -1412,7 +1460,7 @@ function refreshVisibleUI() {
 }
 
 function switchTab(tabId) {
-  if (!TABS.some((t) => t.id === tabId) && tabId !== "docs") return;
+  if (!TABS.some((t) => t.id === tabId) && tabId !== "docs" && tabId !== "admin") return;
   state.activeTab = tabId;
   renderNavigation();
   renderActiveTab();
@@ -1444,6 +1492,87 @@ async function loadCatalog() {
     showToast("Offline mode — using cached catalog");
   }
   refreshVisibleUI();
+}
+
+
+function setAdminAppState(appId, status, reviewNote = undefined) {
+  hub.adminOverrides = hub.adminOverrides || {};
+  const prev = hub.adminOverrides[appId] || {};
+  const next = { ...prev, status };
+  if (reviewNote !== undefined) next.reviewNote = reviewNote;
+  if (status === "available") delete next.reviewNote;
+  hub.adminOverrides[appId] = next;
+
+  // Also update customApps array if it's a sideloaded app
+  const custom = (hub.customApps || []).find((c) => c.id === appId);
+  if (custom) {
+    custom.status = status;
+    if (reviewNote !== undefined) custom.reviewNote = reviewNote;
+    if (status === "available") delete custom.reviewNote;
+  }
+
+  saveHub();
+  refreshVisibleUI();
+}
+
+function toggleAdminFeatured(appId) {
+  const app = getAppById(appId);
+  if (!app) return;
+  hub.adminOverrides = hub.adminOverrides || {};
+  const prev = hub.adminOverrides[appId] || {};
+  const nextFeatured = !app.featured;
+  hub.adminOverrides[appId] = { ...prev, featured: nextFeatured };
+  const custom = (hub.customApps || []).find((c) => c.id === appId);
+  if (custom) custom.featured = nextFeatured;
+  saveHub();
+  refreshVisibleUI();
+  showToast(nextFeatured ? `${app.name} marked Featured` : `${app.name} removed from Featured`);
+}
+
+function buildExportableCatalog() {
+  const all = getAllApps().map((a) => {
+    const clean = { ...a };
+    if (clean.isCustom) {
+      clean.url = `./apps/${clean.id}/index.html`;
+      clean.assets = (clean.assets || []).map((p) => p.replace(`./sideload/${clean.id}/`, `./apps/${clean.id}/`));
+      delete clean.isCustom;
+    }
+    return clean;
+  });
+  return {
+    schemaVersion: 1,
+    hubVersion: "1.0.0",
+    updatedAt: new Date().toISOString().slice(0, 10),
+    apps: all,
+  };
+}
+
+async function fetchGithubSubmissionsQueue() {
+  const repo = (hub.settings.githubRepo || DEFAULT_GITHUB_REPO).trim();
+  if (!repo || !repo.includes("/")) {
+    state.githubError = "Configure your GitHub repository (owner/repo) first.";
+    renderActiveTab();
+    return;
+  }
+  state.githubLoading = true;
+  state.githubError = null;
+  renderActiveTab();
+  try {
+    const res = await fetch(`https://api.github.com/repos/${repo}/contents/submissions`, {
+      headers: { Accept: "application/vnd.github.v3+json" },
+    });
+    if (!res.ok) throw new Error(`GitHub API returned ${res.status}`);
+    const items = await res.json();
+    state.githubQueue = Array.isArray(items)
+      ? items.filter((f) => f.type === "file" && f.name.endsWith(".zip"))
+      : [];
+    showToast(`Found ${state.githubQueue.length} pending .zip submission(s)`);
+  } catch (err) {
+    state.githubError = err.message || "Could not fetch GitHub submissions queue.";
+  } finally {
+    state.githubLoading = false;
+    renderActiveTab();
+  }
 }
 
 // ---------------- Event Delegation ----------------
@@ -1479,6 +1608,65 @@ document.getElementById("openWorkspaceTabBtn").addEventListener("click", () => {
 });
 
 document.getElementById("mainContent").addEventListener("click", async (e) => {
+  const adminFilterBtn = e.target.closest("[data-admin-filter]");
+  if (adminFilterBtn) {
+    state.adminFilter = adminFilterBtn.dataset.adminFilter;
+    renderActiveTab();
+    return;
+  }
+  const adminApproveBtn = e.target.closest("[data-admin-approve]");
+  if (adminApproveBtn) {
+    const id = adminApproveBtn.dataset.adminApprove;
+    setAdminAppState(id, "available");
+    showToast(`Approved "${id}" — now Live in store`);
+    return;
+  }
+  const adminRejectBtn = e.target.closest("[data-admin-reject]");
+  if (adminRejectBtn) {
+    const id = adminRejectBtn.dataset.adminReject;
+    const note = prompt("Optional rejection reason / review note:", "Needs manifest or offline fixes");
+    if (note === null) return;
+    setAdminAppState(id, "rejected", note.trim());
+    showToast(`Marked "${id}" as Rejected`);
+    return;
+  }
+  const adminFeatBtn = e.target.closest("[data-admin-feature]");
+  if (adminFeatBtn) {
+    toggleAdminFeatured(adminFeatBtn.dataset.adminFeature);
+    return;
+  }
+  const adminPreviewBtn = e.target.closest("[data-admin-preview]");
+  if (adminPreviewBtn) {
+    const app = getAppById(adminPreviewBtn.dataset.adminPreview);
+    if (app) openWorkspace(app);
+    return;
+  }
+  const adminDelBtn = e.target.closest("[data-admin-delete]");
+  if (adminDelBtn) {
+    uninstallApp(adminDelBtn.dataset.adminDelete);
+    return;
+  }
+  if (e.target.closest("#adminFetchGithubQueueBtn")) {
+    fetchGithubSubmissionsQueue();
+    return;
+  }
+  if (e.target.closest("#adminCopyCatalogBtn")) {
+    const json = JSON.stringify(buildExportableCatalog(), null, 2);
+    await navigator.clipboard?.writeText(json);
+    showToast("Copied updated catalog.json");
+    return;
+  }
+  if (e.target.closest("#adminDownloadCatalogBtn")) {
+    const json = JSON.stringify(buildExportableCatalog(), null, 2);
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([json], { type: "application/json" }));
+    a.download = "catalog.json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    showToast("Downloaded updated catalog.json");
+    return;
+  }
   const actionBtn = e.target.closest("[data-action-app]");
   if (actionBtn) {
     e.stopPropagation();
@@ -1557,6 +1745,25 @@ document.getElementById("mainContent").addEventListener("input", (e) => {
     state.searchQuery = e.target.value;
     document.getElementById("sidebarQuickSearch").value = state.searchQuery;
     refreshVisibleUI();
+  } else if (e.target.id === "adminSearchInput") {
+    const pos = e.target.selectionStart;
+    state.adminSearch = e.target.value;
+    renderActiveTab();
+    const inp = document.getElementById("adminSearchInput");
+    if (inp) {
+      inp.focus();
+      if (pos !== null) inp.setSelectionRange(pos, pos);
+    }
+  }
+});
+
+document.getElementById("mainContent").addEventListener("change", (e) => {
+  const sel = e.target.closest("[data-admin-status-select]");
+  if (sel) {
+    const id = sel.dataset.adminStatusSelect;
+    const nextStatus = sel.value;
+    setAdminAppState(id, nextStatus);
+    showToast(`Updated "${id}" status to ${nextStatus}`);
   }
 });
 
@@ -1808,9 +2015,7 @@ document.getElementById("accountModalBody").addEventListener("click", async (e) 
     return;
   }
   if (e.target.closest("#googleSignInBtn")) {
-    const cid = (document.getElementById("googleClientIdInput")?.value || "").trim();
-    hub.settings.googleClientId = cid;
-    saveHub();
+    const cid = hub.settings.googleClientId || DEFAULT_GOOGLE_CLIENT_ID;
     state.driveBusy = true;
     renderAccountModalBody();
     try {

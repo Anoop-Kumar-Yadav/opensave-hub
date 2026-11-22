@@ -1,4 +1,4 @@
-const SHELL_CACHE = "opensave-shell-v4";
+const SHELL_CACHE = "opensave-shell-v5";
 const SHELL_ASSETS = [
   "./",
   "./index.html",
@@ -14,6 +14,7 @@ const SHELL_ASSETS = [
   "./src/services/sideloadService.js",
   "./src/services/driveSync.js",
   "./src/ui/docsView.js",
+  "./src/ui/adminView.js",
 ];
 
 self.addEventListener("install", (event) => {
