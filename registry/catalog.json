@@ -24,9 +24,9 @@
         "Markdown Export"
       ],
       "changelog": [
-        "v1.8.0 \u2014 Topic tiles grid with dedicated Topic pages & question tiles",
-        "v1.7.0 \u2014 Configurable Top/Left/Right navigation & mouse-wheel scroll",
-        "v1.5.0 \u2014 Dynamic Pure Algorithms Vault with nested sections"
+        "v1.8.0 — Topic tiles grid with dedicated Topic pages & question tiles",
+        "v1.7.0 — Configurable Top/Left/Right navigation & mouse-wheel scroll",
+        "v1.5.0 — Dynamic Pure Algorithms Vault with nested sections"
       ],
       "assets": [
         "./apps/dsa-sheet/index.html",
@@ -88,7 +88,7 @@
         "Visualizer"
       ],
       "changelog": [
-        "v1.0.0 \u2014 Modular interactive canvas with Array, Stack, Queue, Linked List, BST, Heap, HashMap & Graph"
+        "v1.0.0 — Modular interactive canvas with Array, Stack, Queue, Linked List, BST, Heap, HashMap & Graph"
       ],
       "assets": [
         "./apps/dsa-board/index.html",
@@ -156,7 +156,7 @@
         "Offline"
       ],
       "changelog": [
-        "v1.0.0 \u2014 Initial release with live validation, tree stats, and minify/prettify"
+        "v1.0.0 — Initial release with live validation, tree stats, and minify/prettify"
       ],
       "assets": [
         "./apps/json-studio/index.html"
