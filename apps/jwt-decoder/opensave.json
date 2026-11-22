@@ -1,0 +1,21 @@
+{
+  "id": "jwt-decoder",
+  "name": "JWT Decoder",
+  "tagline": "Offline JWT inspector, claim parser, and HS256/384/512 signature verifier.",
+  "description": "Decode JSON Web Tokens 100% locally in your browser without pasting sensitive auth tokens into third-party websites. Inspect Header and Payload JSON, check expiration timestamps (exp/iat/nbf), and verify HMAC signatures using the native Web Crypto API.",
+  "category": "Dev Tools",
+  "section": "tools",
+  "version": "1.0.0",
+  "developer": "OpenSave",
+  "accent": "#0a84ff",
+  "tags": [
+    "JWT",
+    "Auth",
+    "Security",
+    "API",
+    "Offline"
+  ],
+  "changelog": [
+    "v1.0.0 \u2014 Initial offline release with UTF-8 Base64URL decoding, claim timestamps, and Web Crypto HMAC verification"
+  ]
+}

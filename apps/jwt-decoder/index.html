@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>JWT Decoder | OpenSave</title>
+  <link rel="stylesheet" href="./styles/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="dot"></span>
+      <h1>JWT Decoder</h1>
+      <span class="pill">OFFLINE</span>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn primary" id="sampleBtn">Load Sample</button>
+      <button type="button" class="btn" id="clearBtn">Clear</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="panel input-panel">
+      <div class="panel-head">
+        <span>ENCODED TOKEN</span>
+        <span id="tokenMeta" class="meta">0 chars</span>
+      </div>
+      <textarea id="tokenInput" spellcheck="false" placeholder="Paste a JWT here (header.payload.signature)..."></textarea>
+
+      <div id="tokenPreview" class="token-preview" aria-label="Color-coded JWT segments"></div>
+
+      <div id="statusBar" class="status-bar">
+        <span id="statusText">Paste a JWT to decode locally</span>
+        <span id="algBadge" class="badge" hidden></span>
+      </div>
+
+      <div class="verify-box">
+        <div class="panel-head">
+          <span>VERIFY SIGNATURE (HMAC · WEB CRYPTO)</span>
+          <span id="verifyStatus" class="verify-pill">Not verified</span>
+        </div>
+        <div class="verify-row">
+          <input id="secretInput" type="text" spellcheck="false" placeholder="Enter HMAC secret (sample: opensave-secret)">
+          <button type="button" class="btn" id="verifyBtn">Verify</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="decoded-col">
+      <div class="panel">
+        <div class="panel-head">
+          <span class="c-header">HEADER · ALGORITHM &amp; TOKEN TYPE</span>
+          <button type="button" class="btn sm" id="copyHeaderBtn">Copy</button>
+        </div>
+        <pre id="headerOut" class="code-out">{}</pre>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <span class="c-payload">PAYLOAD · DATA &amp; CLAIMS</span>
+          <button type="button" class="btn sm" id="copyPayloadBtn">Copy</button>
+        </div>
+        <pre id="payloadOut" class="code-out">{}</pre>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <span>REGISTERED CLAIMS</span>
+          <span id="expBadge" class="badge" hidden></span>
+        </div>
+        <div id="claimsList" class="claims-list">
+          <p class="empty">No standard time or identity claims detected yet.</p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <span class="c-sig">SIGNATURE (BASE64URL)</span>
+          <button type="button" class="btn sm" id="copySigBtn">Copy</button>
+        </div>
+        <pre id="sigOut" class="code-out sig-out">—</pre>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
