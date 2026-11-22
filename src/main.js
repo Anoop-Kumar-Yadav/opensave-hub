@@ -22,6 +22,12 @@ import {
 } from "./services/sideloadService.js";
 import { renderDocsView } from "./ui/docsView.js";
 import { renderAdminView } from "./ui/adminView.js";
+import {
+  getAdminSession,
+  signInAdminWithGoogle,
+  signOutAdmin,
+  onAdminAuthChange,
+} from "./services/adminAuth.js";
 
 const HUB_KEY = "opensave-hub-v1";
 
@@ -91,6 +97,8 @@ const state = {
   publishAppId: null,
   publishBusy: false,
   driveBusy: false,
+  adminAuth: { user: null, email: "", name: "", role: "user", isAdmin: false },
+  adminAuthBusy: false,
   adminFilter: "all",
   adminSearch: "",
   githubQueue: null,
@@ -498,6 +506,7 @@ function renderNavigation() {
           ${DOCS_TAB.icon}
           <span>${DOCS_TAB.label}</span>
         </button>
+        ${state.adminAuth.isAdmin ? `
         <button
           type="button"
           data-tab="${ADMIN_TAB.id}"
@@ -506,7 +515,7 @@ function renderNavigation() {
         >
           ${ADMIN_TAB.icon}
           <span>${ADMIN_TAB.label}</span>
-        </button>
+        </button>` : ""}
       </div>
     `;
 
@@ -1301,6 +1310,35 @@ function renderAccountModalBody() {
       </div>
     </div>
 
+    <!-- Admin Role Authentication (Supabase) -->
+    <section>
+      <h3 class="text-xs font-bold uppercase tracking-wider text-sub mb-2.5 px-1">Admin Access (Supabase Auth)</h3>
+      <div class="surface-elevated rounded-2xl p-4 border border-hairline-subtle space-y-3">
+        ${state.adminAuth.user ? `
+          <div class="flex items-center justify-between gap-3">
+            <div class="min-w-0">
+              <p class="text-sm font-bold text-main truncate">${escAttr(state.adminAuth.name || state.adminAuth.email)}</p>
+              <p class="text-[11px] text-sub truncate">${escAttr(state.adminAuth.email)} · Role: <strong>${escAttr(state.adminAuth.role)}</strong></p>
+            </div>
+            <button type="button" id="adminSignOutBtn" class="text-xs font-semibold text-[#ff3b30] hover:underline shrink-0">Sign Out</button>
+          </div>
+          ${state.adminAuth.isAdmin ? `
+            <div class="pt-2.5 border-t border-hairline-subtle flex items-center justify-between gap-2">
+              <span class="text-[11px] font-semibold text-[#34c759]">Admin role verified via JWT</span>
+              <button type="button" id="openAdminFromAccountBtn" class="get-btn get-btn-solid px-3.5 py-1 rounded-full text-xs">Open Admin</button>
+            </div>
+          ` : `
+            <p class="text-[11px] text-sub pt-2 border-t border-hairline-subtle">Signed in as standard user. Grant <code>role: "admin"</code> in Supabase SQL Editor and sign in again to unlock Admin.</p>
+          `}
+        ` : `
+          <div class="flex items-center justify-between gap-3 flex-wrap">
+            <span class="text-[11px] text-sub">Store owners sign in to unlock Admin Dashboard</span>
+            <button type="button" id="adminSignInBtn" ${state.adminAuthBusy ? "disabled" : ""} class="get-btn px-4 py-1.5 rounded-full text-xs">${state.adminAuthBusy ? "Redirecting..." : "Admin Sign In"}</button>
+          </div>
+        `}
+      </div>
+    </section>
+
     <!-- Google Login & Drive Cloud Backup (Zero Backend) -->
     <section>
       <h3 class="text-xs font-bold uppercase tracking-wider text-sub mb-2.5 px-1">Google Drive Cloud Sync (Free)</h3>
@@ -1460,6 +1498,10 @@ function refreshVisibleUI() {
 }
 
 function switchTab(tabId) {
+  if (tabId === "admin" && !state.adminAuth.isAdmin) {
+    showToast("Admin access requires an authorized Supabase Admin account");
+    return;
+  }
   if (!TABS.some((t) => t.id === tabId) && tabId !== "docs" && tabId !== "admin") return;
   state.activeTab = tabId;
   renderNavigation();
@@ -1984,6 +2026,37 @@ publishBody.addEventListener("click", async (e) => {
 document.getElementById("closeAccountModalBtn").addEventListener("click", closeAccountModal);
 document.getElementById("accountModalBackdrop").addEventListener("click", closeAccountModal);
 document.getElementById("accountModalBody").addEventListener("click", async (e) => {
+  if (e.target.closest("#openAdminFromAccountBtn")) {
+    closeAccountModal();
+    setTimeout(() => switchTab("admin"), 250);
+    return;
+  }
+  if (e.target.closest("#adminSignInBtn")) {
+    state.adminAuthBusy = true;
+    renderAccountModalBody();
+    try {
+      await signInAdminWithGoogle();
+    } catch (err) {
+      state.adminAuthBusy = false;
+      renderAccountModalBody();
+      showToast(err.message || "Admin sign-in failed");
+    }
+    return;
+  }
+  if (e.target.closest("#adminSignOutBtn")) {
+    try {
+      await signOutAdmin();
+      state.adminAuth = { user: null, email: "", name: "", role: "user", isAdmin: false };
+      if (state.activeTab === "admin") state.activeTab = "today";
+      renderNavigation();
+      renderActiveTab();
+      renderAccountModalBody();
+      showToast("Signed out of Admin session");
+    } catch (err) {
+      showToast(err.message || "Sign out failed");
+    }
+    return;
+  }
   if (e.target.closest("#openDocsFromAccountBtn")) {
     closeAccountModal();
     setTimeout(() => switchTab("docs"), 250);
@@ -2122,6 +2195,20 @@ window.addEventListener("beforeinstallprompt", (e) => {
 });
 
 // Boot
+getAdminSession().then((session) => {
+  state.adminAuth = session;
+  renderNavigation();
+  if (state.accountModalOpen) renderAccountModalBody();
+});
+onAdminAuthChange((session) => {
+  state.adminAuth = session;
+  if (!session.isAdmin && state.activeTab === "admin") {
+    state.activeTab = "today";
+    renderActiveTab();
+  }
+  renderNavigation();
+  if (state.accountModalOpen) renderAccountModalBody();
+});
 applyTheme(state.theme);
 renderNavigation();
 registerServiceWorker();

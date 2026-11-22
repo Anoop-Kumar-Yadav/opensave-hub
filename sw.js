@@ -1,4 +1,4 @@
-const SHELL_CACHE = "opensave-shell-v5";
+const SHELL_CACHE = "opensave-shell-v6";
 const SHELL_ASSETS = [
   "./",
   "./index.html",
@@ -13,6 +13,7 @@ const SHELL_ASSETS = [
   "./src/services/zipReader.js",
   "./src/services/sideloadService.js",
   "./src/services/driveSync.js",
+  "./src/services/adminAuth.js",
   "./src/ui/docsView.js",
   "./src/ui/adminView.js",
 ];
